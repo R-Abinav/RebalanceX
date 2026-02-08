@@ -36,33 +36,38 @@ function getEnv(key: string, fallback?: string): string {
 }
 
 // Chain configurations
+// CCTP V2 Contract Addresses from https://developers.circle.com/cctp/evm-smart-contracts
+// Domain IDs from https://developers.circle.com/cctp/concepts/supported-chains-and-domains
 export const CHAINS: Record<ChainName, ChainConfig> = {
     sepolia: {
         name: 'sepolia',
         chainId: 11155111,
         rpcUrl: getEnv('SEPOLIA_RPC_URL', 'https://ethereum-sepolia-rpc.publicnode.com'),
         usdcAddress: getEnv('SEPOLIA_USDC', '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238'),
-        tokenMessenger: getEnv('SEPOLIA_TOKEN_MESSENGER', '0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5'),
-        messageTransmitter: getEnv('SEPOLIA_MESSAGE_TRANSMITTER', '0x7865fAfC2db2093669d92c0F33AeEF291086BEFD'),
-        cctpDomain: 0,
+        // CCTP V2 addresses (same across all testnets)
+        tokenMessenger: getEnv('SEPOLIA_TOKEN_MESSENGER', '0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA'),
+        messageTransmitter: getEnv('SEPOLIA_MESSAGE_TRANSMITTER', '0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275'),
+        cctpDomain: 0, // Ethereum domain
     },
     polygonAmoy: {
         name: 'polygonAmoy',
         chainId: 80002,
         rpcUrl: getEnv('POLYGON_AMOY_RPC_URL', 'https://rpc-amoy.polygon.technology'),
         usdcAddress: getEnv('POLYGON_AMOY_USDC', '0x41E94Eb019C0762f9Bfcf9Fb1E58725BfB0e7582'),
-        tokenMessenger: getEnv('POLYGON_AMOY_TOKEN_MESSENGER', '0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5'),
-        messageTransmitter: getEnv('POLYGON_AMOY_MESSAGE_TRANSMITTER', '0x7865fAfC2db2093669d92c0F33AeEF291086BEFD'),
-        cctpDomain: 7,
+        // CCTP V2 addresses (same across all testnets)
+        tokenMessenger: getEnv('POLYGON_AMOY_TOKEN_MESSENGER', '0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA'),
+        messageTransmitter: getEnv('POLYGON_AMOY_MESSAGE_TRANSMITTER', '0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275'),
+        cctpDomain: 7, // Polygon domain
     },
     arbitrumSepolia: {
         name: 'arbitrumSepolia',
         chainId: 421614,
         rpcUrl: getEnv('ARBITRUM_SEPOLIA_RPC_URL', 'https://sepolia-rollup.arbitrum.io/rpc'),
         usdcAddress: getEnv('ARBITRUM_SEPOLIA_USDC', '0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d'),
-        tokenMessenger: getEnv('ARBITRUM_SEPOLIA_TOKEN_MESSENGER', '0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5'),
-        messageTransmitter: getEnv('ARBITRUM_SEPOLIA_MESSAGE_TRANSMITTER', '0xaCF1ceeF35caAc005e15888dDb8A3515C41B4872'),
-        cctpDomain: 3,
+        // CCTP V2 addresses (same across all testnets)
+        tokenMessenger: getEnv('ARBITRUM_SEPOLIA_TOKEN_MESSENGER', '0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA'),
+        messageTransmitter: getEnv('ARBITRUM_SEPOLIA_MESSAGE_TRANSMITTER', '0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275'),
+        cctpDomain: 3, // Arbitrum domain
     },
 };
 
