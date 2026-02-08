@@ -3,7 +3,7 @@
  */
 
 // Supported chains
-export type ChainName = 'sepolia' | 'polygonAmoy' | 'arbitrumSepolia';
+export type ChainName = 'sepolia' | 'polygonAmoy' | 'arbitrumSepolia' | 'arc';
 
 // Chain configuration
 export interface ChainConfig {

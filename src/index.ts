@@ -19,11 +19,11 @@ program
     .name('rebalancex')
     .description('Autonomous multi-chain USDC treasury rebalancer')
     .version('1.0.0')
-    .option('-t, --target <allocation>', 'Target allocation percentages (e.g., "40,30,30")', '40,30,30')
+    .option('-t, --target <allocation>', 'Target allocation percentages (e.g., "25,25,25,25")', '25,25,25,25')
     .option('-T, --threshold <percent>', 'Rebalance threshold in %', String(DEFAULT_THRESHOLD))
     .option('-i, --interval <seconds>', 'Check interval in seconds', String(DEFAULT_INTERVAL))
     .option('-d, --dry-run', 'Simulate without executing transfers', false)
-    .option('-c, --chains <chains>', 'Comma-separated chain names', 'sepolia,polygonAmoy,arbitrumSepolia')
+    .option('-c, --chains <chains>', 'Comma-separated chain names', 'sepolia,polygonAmoy,arbitrumSepolia,arc')
     .option('-o, --once', 'Run once and exit', false);
 
 /**

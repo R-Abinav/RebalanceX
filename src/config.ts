@@ -69,6 +69,17 @@ export const CHAINS: Record<ChainName, ChainConfig> = {
         messageTransmitter: getEnv('ARBITRUM_SEPOLIA_MESSAGE_TRANSMITTER', '0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275'),
         cctpDomain: 3, // Arbitrum domain
     },
+    arc: {
+        name: 'arc',
+        chainId: 5042002,
+        rpcUrl: getEnv('ARC_RPC_URL', 'https://rpc.testnet.arc.network'),
+        // Arc native USDC (uses 18 decimals natively, 6 decimals via ERC-20 interface)
+        usdcAddress: getEnv('ARC_USDC', '0x3600000000000000000000000000000000000000'),
+        // CCTP V2 addresses for Arc
+        tokenMessenger: getEnv('ARC_TOKEN_MESSENGER', '0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA'),
+        messageTransmitter: getEnv('ARC_MESSAGE_TRANSMITTER', '0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275'),
+        cctpDomain: 26, // Arc domain
+    },
 };
 
 // Get wallet private key
@@ -84,9 +95,10 @@ export const ATTESTATION_API_URL = getEnv(
 
 // Default target allocations (can be overridden via CLI)
 export const DEFAULT_TARGET_ALLOCATIONS = {
-    sepolia: 40,
-    polygonAmoy: 30,
-    arbitrumSepolia: 30,
+    sepolia: 25,
+    polygonAmoy: 25,
+    arbitrumSepolia: 25,
+    arc: 25,
 };
 
 // Default threshold percentage
