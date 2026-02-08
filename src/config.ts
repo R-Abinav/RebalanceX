@@ -14,9 +14,9 @@ export const ERC20_ABI = [
     'function decimals() view returns (uint8)',
 ] as const;
 
-// CCTP TokenMessenger ABI
+// CCTP V2 TokenMessenger ABI (updated signature with 7 parameters)
 export const TOKEN_MESSENGER_ABI = [
-    'function depositForBurn(uint256 amount, uint32 destinationDomain, bytes32 mintRecipient, address burnToken) returns (uint64 nonce)',
+    'function depositForBurn(uint256 amount, uint32 destinationDomain, bytes32 mintRecipient, address burnToken, bytes32 destinationCaller, uint256 maxFee, uint32 finalityThreshold) returns (uint64 nonce)',
     'event DepositForBurn(uint64 indexed nonce, address indexed burnToken, uint256 amount, address indexed depositor, bytes32 mintRecipient, uint32 destinationDomain, bytes32 destinationTokenMessenger, bytes32 destinationCaller)',
 ] as const;
 
@@ -87,10 +87,10 @@ export function getPrivateKey(): string {
     return getEnv('PRIVATE_KEY');
 }
 
-// Circle attestation API URL
+// Circle attestation API URL (base URL for V2 API)
 export const ATTESTATION_API_URL = getEnv(
     'CIRCLE_ATTESTATION_URL',
-    'https://iris-api-sandbox.circle.com/attestations'
+    'https://iris-api-sandbox.circle.com'
 );
 
 // Default target allocations (can be overridden via CLI)

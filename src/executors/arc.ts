@@ -28,7 +28,7 @@ const RETRY_CONFIG = {
 };
 
 const ATTESTATION_CONFIG = {
-    maxAttempts: 120,        // 20 minutes at 10s intervals
+    maxAttempts: 180,        // 30 minutes at 10s intervals
     intervalMs: 10000,
     fastIntervalMs: 5000,    // faster polling initially
     fastPollAttempts: 12,    // 1 minute of fast polling
@@ -277,12 +277,22 @@ async function burnUSDC(
 
     return withRetry(
         async () => {
-            // Estimate gas
+            // CCTP V2 parameters:
+            // - destinationCaller: bytes32(0) means anyone can call receiveMessage
+            // - maxFee: 0 for standard transfer (no fast transfer fee)
+            // - finalityThreshold: 2000 for standard transfer (1000 for fast)
+            const destinationCaller = ethers.zeroPadValue('0x00', 32);
+            const maxFee = 0n;
+            const finalityThreshold = 2000; // Standard transfer
+
             const args = [
                 amount,
                 toChain.cctpDomain,
                 addressToBytes32(recipient),
                 fromChain.usdcAddress,
+                destinationCaller,
+                maxFee,
+                finalityThreshold,
             ];
             const gasEstimate = await estimateGas(fromChain, tokenMessenger, 'depositForBurn', args);
 
@@ -347,12 +357,13 @@ interface AttestationResult {
 }
 
 async function waitForAttestation(
-    messageHash: string,
+    sourceDomain: number,
+    txHash: string,
     options: Partial<typeof ATTESTATION_CONFIG> = {}
 ): Promise<AttestationResult> {
     const config = { ...ATTESTATION_CONFIG, ...options };
 
-    logger.info(`Waiting for attestation...`, { messageHash: messageHash.slice(0, 20) + '...' });
+    logger.info(`Waiting for attestation...`, { txHash: txHash.slice(0, 20) + '...' });
 
     let attempt = 0;
 
@@ -365,7 +376,9 @@ async function waitForAttestation(
             : config.intervalMs;
 
         try {
-            const response = await fetch(`${ATTESTATION_API_URL}/${messageHash}`);
+            // CCTP V2 API format: /v2/messages/{sourceDomainId}?transactionHash={txHash}
+            const url = `${ATTESTATION_API_URL}/v2/messages/${sourceDomain}?transactionHash=${txHash}`;
+            const response = await fetch(url);
 
             if (!response.ok) {
                 if (response.status === 404) {
@@ -375,21 +388,36 @@ async function waitForAttestation(
                 }
             } else {
                 const data = await response.json() as {
-                    status: string;
-                    attestation?: string;
-                    message?: string;
+                    messages?: Array<{
+                        status: string;
+                        attestation?: string;
+                        message?: string;
+                    }>;
                 };
 
-                if (data.status === 'complete' && data.attestation && data.message) {
-                    const waitTimeMinutes = ((attempt - 1) * intervalMs / 1000 / 60).toFixed(1);
-                    logger.info(`✅ Attestation received after ${waitTimeMinutes} minutes`, {
-                        attempts: attempt,
-                    });
-                    return { attestation: data.attestation, message: data.message };
-                }
+                // Debug log the response structure
+                logger.debug(`Attestation API response`, {
+                    hasMessages: !!data.messages,
+                    messagesLength: data.messages?.length ?? 0,
+                    firstMsgStatus: data.messages?.[0]?.status,
+                    hasAttestation: !!data.messages?.[0]?.attestation,
+                    hasMessage: !!data.messages?.[0]?.message,
+                });
 
-                if (data.status === 'pending_confirmations') {
-                    logger.debug(`Pending confirmations (attempt ${attempt})`);
+                // V2 API returns messages array
+                if (data.messages && data.messages.length > 0) {
+                    const msg = data.messages[0];
+                    if (msg && msg.status === 'complete' && msg.attestation && msg.message) {
+                        const waitTimeMinutes = ((attempt - 1) * intervalMs / 1000 / 60).toFixed(1);
+                        logger.info(`✅ Attestation received after ${waitTimeMinutes} minutes`, {
+                            attempts: attempt,
+                        });
+                        return { attestation: msg.attestation, message: msg.message };
+                    }
+
+                    if (msg && msg.status === 'pending_confirmations') {
+                        logger.debug(`Pending confirmations (attempt ${attempt})`);
+                    }
                 }
             }
         } catch (error) {
@@ -494,9 +522,9 @@ export async function executeTransfer(
             wallet.address
         );
 
-        // Step 3: Wait for attestation
+        // Step 3: Wait for attestation (V2 API uses sourceDomain and txHash)
         logger.info('Step 3/4: Waiting for Circle attestation...');
-        const { attestation, message } = await waitForAttestation(messageHash);
+        const { attestation, message } = await waitForAttestation(from.cctpDomain, burnTxHash);
 
         // Step 4: Mint on destination chain
         logger.info('Step 4/4: Minting USDC on destination chain...');

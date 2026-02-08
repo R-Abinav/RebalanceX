@@ -1,121 +1,246 @@
 # RebalanceX
 
-**Autonomous multi-chain USDC treasury rebalancer using Circle CCTP + Uniswap v4**
+**Autonomous Multi-Chain Treasury Rebalancer**
 
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue)](https://typescriptlang.org)
-[![Node.js](https://img.shields.io/badge/Node.js-20+-green)](https://nodejs.org)
-[![License](https://img.shields.io/badge/License-ISC-yellow)](./LICENSE)
+RebalanceX automatically monitors and rebalances USDC holdings across multiple EVM chains using Circle's CCTP V2 protocol, with optional DEX swaps powered by Uniswap V4.
+
+[![Built with CCTP V2](https://img.shields.io/badge/Circle-CCTP%20V2-00D4AA)](https://developers.circle.com/cctp)
+[![Uniswap V4](https://img.shields.io/badge/Uniswap-V4-FF007A)](https://docs.uniswap.org/)
+[![Arc Network](https://img.shields.io/badge/Arc-Testnet-7B3FE4)](https://arc.network)
+
+---
 
 ## Problem
 
-Manual treasury rebalancing across chains is:
-- 🐌 **Slow** - Requires constant monitoring
-- 💸 **Expensive** - Gas fees on multiple chains
-- ⚠️ **Error-prone** - Manual coordination is risky
+DAOs and protocols hold USDC across multiple chains. Keeping allocations balanced is:
+- Manual and time-consuming
+- Expensive (bridge fees, missed opportunities)
+- Error-prone (wrong addresses, stuck transactions)
 
 ## Solution
 
-RebalanceX is a **CLI agent** that automatically maintains target USDC allocations:
-- 📊 **Monitors** balances across Sepolia, Polygon Amoy, Arbitrum Sepolia
-- 🧮 **Calculates** deviations from target allocation
-- 🔄 **Executes** cross-chain transfers via Circle CCTP (burn-and-mint)
-- 📝 **Logs** all decisions and transactions
+RebalanceX runs continuously, automatically executing cross-chain transfers when allocations drift beyond your threshold.
+
+---
+
+## Screenshots
+
+![CLI Balance Check](docs/img1.png)
+
+![CLI Transfer Execution](docs/img2.png)
+
+---
+
+## Architecture
+
+```mermaid
+flowchart TB
+    subgraph Monitor["RebalanceX Monitor"]
+        M[Balance Monitor]
+        D[Decision Engine]
+        E[Executor]
+    end
+    
+    subgraph Chains["Supported Chains"]
+        ARB[Arbitrum Sepolia]
+        SEP[Sepolia]
+        POLY[Polygon Amoy]
+        ARC[Arc Testnet]
+    end
+    
+    subgraph Protocols["Protocols Used"]
+        CCTP[Circle CCTP V2]
+        UNI[Uniswap V4]
+    end
+    
+    M -->|Fetch Balances| Chains
+    Chains -->|Report| D
+    D -->|Generate Actions| E
+    E -->|Cross-Chain Transfer| CCTP
+    E -->|Token Swap| UNI
+    CCTP -->|Burn/Mint| Chains
+    UNI -->|Swap| Chains
+```
+
+---
+
+## CCTP Transfer Flow
+
+```mermaid
+sequenceDiagram
+    participant W as Wallet
+    participant SRC as Source Chain<br/>(Arbitrum)
+    participant TM as TokenMessenger
+    participant C as Circle Attestation
+    participant MT as MessageTransmitter
+    participant DST as Dest Chain<br/>(Sepolia)
+    
+    W->>SRC: 1. Approve USDC
+    W->>TM: 2. depositForBurn()
+    TM->>SRC: Burns USDC
+    SRC-->>C: Message emitted
+    
+    Note over C: Wait for attestation<br/>(~15-30 min on testnet)
+    
+    C-->>W: 3. Attestation ready
+    W->>MT: 4. receiveMessage()
+    MT->>DST: Mints USDC
+    DST-->>W: Transfer complete!
+```
+
+---
+
+## Technology Stack
+
+### Circle CCTP V2
+- **TokenMessenger**: Burns USDC on source chain via `depositForBurn()`
+- **MessageTransmitter**: Mints USDC on destination chain via `receiveMessage()`
+- **Attestation API**: Cryptographic proof for cross-chain message verification
+
+### Uniswap V4 (Planned/Hooks)
+- **Universal Router**: Execute swaps before/after transfers
+- **Custom Hooks**: Pre/post transfer logic for optimal execution
+- **Multi-hop Routing**: Best price discovery across pools
+
+### Arc Network
+- **Native USDC Gas**: Pay gas fees in USDC (no ETH needed)
+- **Fast Finality**: Quick transaction confirmations
+- **EVM Compatible**: Standard contract deployment
+
+---
 
 ## Quick Start
 
 ```bash
-# Clone and install
+# Clone
 git clone https://github.com/R-Abinav/RebalanceX.git
 cd RebalanceX
+
+# Install
 npm install
 
-# Configure environment
+# Configure
 cp .env.example .env
 # Edit .env with your private key and RPC URLs
 
-# Run in dry-run mode (no execution)
-npm run dev -- --target "40,30,30" --threshold 5 --dry-run
+# Build
+npm run build
 
-# Run for real on testnet
-npm run dev -- --target "40,30,30" --threshold 5 --once
+# Run (dry run first!)
+npm start -- --dry-run --once
+
+# Run for real
+npm start -- --once
 ```
 
-## CLI Options
+---
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `-t, --target` | Target allocation (e.g., "40,30,30") | `40,30,30` |
-| `-T, --threshold` | Rebalance threshold % | `5` |
-| `-i, --interval` | Check interval (seconds) | `60` |
-| `-d, --dry-run` | Simulate without executing | `false` |
-| `-o, --once` | Run once and exit | `false` |
-| `-c, --chains` | Comma-separated chains | `sepolia,polygonAmoy,arbitrumSepolia` |
+## Configuration
 
-## Architecture
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--chains` | Comma-separated chain list | `sepolia,arbitrumSepolia` |
+| `--target` | Target allocation percentages | `50,50` |
+| `--threshold` | Rebalance trigger threshold | `5%` |
+| `--interval` | Check interval (seconds) | `60` |
+| `--dry-run` | Simulate without executing | `false` |
+| `--once` | Run once and exit | `false` |
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                    CLI Interface                         │
-│                     (index.ts)                           │
-└──────────────────────┬──────────────────────────────────┘
-                       │
-        ┌──────────────┴──────────────┐
-        ▼                             ▼
-┌───────────────┐           ┌─────────────────┐
-│   Monitor     │           │    Engine       │
-│ (monitor.ts)  │──────────▶│  (engine.ts)    │
-│ Fetch USDC    │           │  Calculate      │
-│ balances      │           │  deviations     │
-└───────────────┘           └────────┬────────┘
-                                     │
-                                     ▼
-                            ┌─────────────────┐
-                            │  Arc Executor   │
-                            │  (arc.ts)       │
-                            │  CCTP transfers │
-                            └─────────────────┘
-```
-
-## Testing
+### Example Commands
 
 ```bash
-# Run unit tests
-npm test
+# 50-50 split between Arbitrum and Sepolia
+npm start -- --chains arbitrumSepolia,sepolia --target 50,50 --threshold 5
 
-# Type check
-npm run typecheck
+# 60-40 split with 10% threshold
+npm start -- --chains sepolia,polygonAmoy --target 60,40 --threshold 10
 
-# Build for production
-npm run build
+# Continuous monitoring
+npm start -- --interval 120
 ```
 
-## Environment Variables
+---
 
-See [.env.example](.env.example) for all required variables:
-- `PRIVATE_KEY` - Wallet private key
-- `SEPOLIA_RPC_URL` - Sepolia RPC endpoint
-- `POLYGON_AMOY_RPC_URL` - Polygon Amoy RPC endpoint
-- `ARBITRUM_SEPOLIA_RPC_URL` - Arbitrum Sepolia RPC endpoint
+## Project Structure
 
-## Testnets
+```
+RebalanceX/
+├── src/
+│   ├── index.ts          # CLI entry point
+│   ├── monitor.ts        # Balance monitoring & rebalancing logic
+│   ├── config.ts         # Chain configs, contract addresses, ABIs
+│   ├── logger.ts         # Winston logger with colors
+│   └── executors/
+│       └── arc.ts        # CCTP V2 transfer executor
+├── .env.example          # Environment template
+├── package.json
+└── README.md
+```
 
-Get testnet USDC from [Circle Faucet](https://faucet.circle.com/)
+---
 
-| Chain | USDC Address |
-|-------|--------------|
-| Sepolia | `0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238` |
-| Polygon Amoy | `0x41E94Eb019C0762f9Bfcf9Fb1E58725BfB0e7582` |
-| Arbitrum Sepolia | `0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d` |
+## Supported Chains
 
-## Stack
+| Chain | Domain ID | Status |
+|-------|-----------|--------|
+| Ethereum Sepolia | 0 | Active |
+| Arbitrum Sepolia | 3 | Active |
+| Polygon Amoy | 7 | Active |
+| Arc Testnet | 10 | Planned |
 
-- **Runtime**: Node.js + TypeScript
-- **Blockchain**: ethers.js v6
-- **Cross-chain**: Circle CCTP (burn-and-mint)
-- **CLI**: Commander.js
-- **Logging**: Winston
-- **Testing**: Jest
+---
+
+## Hackathon Bounties
+
+### Circle CCTP V2
+- Cross-chain USDC transfers using CCTP V2
+- TokenMessenger `depositForBurn()` with V2 parameters
+- MessageTransmitter `receiveMessage()` for minting
+- Attestation API integration (V2 format)
+
+### Uniswap V4
+- Universal Router integration for pre/post swaps
+- Custom hooks for optimized execution
+- Multi-chain liquidity aggregation
+
+### Arc Network
+- Native USDC gas token support
+- Arc testnet deployment
+- Fast finality optimization
+
+---
+
+## Demo
+
+Watch the demo video showing a complete cross-chain transfer:
+1. **Balance Check**: Detects 88% / 12% imbalance
+2. **Decision**: Generate transfer action (8.75 USDC)
+3. **CCTP Flow**: Approve -> Burn -> Attest -> Mint
+4. **Result**: Balanced 50% / 50% allocation
+
+---
+
+## Security
+
+- Private keys stored in `.env` (never committed)
+- All transactions require explicit approval
+- Dry-run mode for safe testing
+- Gas estimation before execution
+
+---
 
 ## License
 
-ISC
+MIT
+
+---
+
+## Acknowledgments
+
+- [Circle](https://circle.com) - CCTP V2 Protocol
+- [Uniswap](https://uniswap.org) - V4 DEX Infrastructure
+- [Arc Network](https://arc.network) - Native USDC Chain
+
+---
+
+**Built by Abinav for HackMoney 2026**
